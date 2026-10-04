@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kuchi-Serve LMS — Dashboard</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#111a33; --panel2:#0f1730; --text:#eaf0ff;
+      --muted:#9fb0d0; --accent:#6ea8fe; --good:#42d392; --warn:#ffcc66; --bad:#ff6b6b;
+      --border: rgba(255,255,255,.08);
+      --shadow: 0 10px 25px rgba(0,0,0,.35);
+      --radius: 14px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);background:radial-gradient(1200px 800px at 20% 10%, #1a2a6c 0%, rgba(26,42,108,0) 55%),
+      radial-gradient(900px 600px at 90% 15%, #004e92 0%, rgba(0,78,146,0) 55%), var(--bg);
+      color:var(--text);
+    }
+    header{padding:22px 22px 10px;max-width:1200px;margin:0 auto;}
+    header h1{margin:0 0 6px;font-size:22px;letter-spacing:.3px}
+    header p{margin:0;color:var(--muted);font-size:13px}
+
+    .wrap{max-width:1200px;margin:0 auto;padding:12px 22px 28px;display:grid;gap:14px}
+
+    .row{display:grid;gap:14px}
+    @media (min-width: 980px){
+      .row.kpis{grid-template-columns: repeat(4, 1fr)}
+      .row.main{grid-template-columns: 1.25fr .75fr}
+      .row.bottom{grid-template-columns: 1fr 1fr}
+    }
+
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--border); border-radius:var(--radius);
+      box-shadow:var(--shadow); overflow:hidden;
+    }
+    .card .hd{display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;border-bottom:1px solid var(--border);
+      background:rgba(0,0,0,.18)
+    }
+    .card .hd h2{margin:0;font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.35px;text-transform:uppercase}
+    .card .bd{padding:14px}
+
+    .kpi{display:flex;flex-direction:column;gap:8px}
+    .kpi .val{font-size:26px;font-weight:750}
+    .kpi .sub{color:var(--muted);font-size:12px}
+    .pill{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+
+    .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    input, select, button{
+      background:rgba(255,255,255,.06);color:var(--text);
+      border:1px solid var(--border);border-radius:10px;padding:10px 10px;
+      outline:none
+    }
+    input::placeholder{color:rgba(234,240,255,.55)}
+    button{cursor:pointer;font-weight:650}
+    button.primary{background:linear-gradient(180deg, rgba(110,168,254,.28), rgba(110,168,254,.12));border-color:rgba(110,168,254,.35)}
+    button.good{background:linear-gradient(180deg, rgba(66,211,146,.25), rgba(66,211,146,.10));border-color:rgba(66,211,146,.35)}
+    button.bad{background:linear-gradient(180deg, rgba(255,107,107,.22), rgba(255,107,107,.08));border-color:rgba(255,107,107,.35)}
+
+    table{width:100%;border-collapse:collapse}
+    th, td{padding:10px 8px;border-bottom:1px solid var(--border);font-size:13px}
+    th{color:var(--muted);text-align:left;font-weight:650}
+    tr:hover td{background:rgba(255,255,255,.03)}
+
+    .tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+    .dot{width:8px;height:8px;border-radius:50%}
+    .dot.good{background:var(--good)}
+    .dot.warn{background:var(--warn)}
+    .dot.bad{background:var(--bad)}
+
+    .grid2{display:grid;gap:12px}
+    @media (min-width: 980px){ .grid2{grid-template-columns: 1fr 1fr} }
+
+    .mini{color:var(--muted);font-size:12px}
+    canvas{width:100%;height:220px}
+
+    .calendar{display:grid;grid-template-columns: repeat(7, 1fr);gap:8px}
+    .day{border:1px solid var(--border);border-radius:12px;padding:10px;min-height:88px;background:rgba(0,0,0,.18)}
+    .day .d{color:var(--muted);font-size:12px;margin-bottom:6px}
+    .chip{display:block;margin:6px 0 0;padding:6px 8px;border-radius:10px;border:1px solid var(--border);font-size:12px}
+
+    footer{max-width:1200px;margin:0 auto;padding:0 22px 18px;color:rgba(234,240,255,.55);font-size:12px}
+    a{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kuchi-Serve LMS — Personal Productivity Dashboard</h1>
+    <p>KPIs • Tasks table + filters • Charts • Weekly calendar • Quick actions</p>
+  </header>
+
+  <div class="wrap">
+
+    <div class="row kpis">
+      <div class="card"><div class="bd kpi"><div class="sub">Total tasks</div><div id="kpiTotal" class="val">0</div><div class="mini" id="kpiTotalSub">All tasks</div></div></div>
+      <div class="card"><div class="bd kpi"><div class="sub">Done</div><div id="kpiDone" class="val">0</div><div class="mini">Completed</div></div></div>
+      <div class="card"><div class="bd kpi"><div class="sub">Overdue</div><div id="kpiOverdue" class="val">0</div><div class="mini">Due date passed</div></div></div>
+      <div class="card"><div class="bd kpi"><div class="sub">Due this week</div><div id="kpiThisWeek" class="val">0</div><div class="mini">Next 7 days</div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="hd">
+        <h2>Controls</h2>
+        <span class="pill" id="clock"></span>
+      </div>
+      <div class="bd controls">
+        <input id="search" placeholder="Search tasks…" style="min-width:220px" />
+        <select id="filterStatus">
+          <option value="all">All statuses</option>
+          <option value="todo">To do</option>
+          <option value="doing">Doing</option>
+          <option value="done">Done</option>
+        </select>
+        <select id="filterPriority">
+          <option value="all">All priorities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <button class="primary" id="btnAdd">Add task</button>
+        <button class="good" id="btnMarkDone">Mark selected as done</button>
+        <button class="bad" id="btnDelete">Delete selected</button>
+      </div>
+    </div>
+
+    <div class="row main">
+      <div class="card">
+        <div class="hd"><h2>Tasks</h2><span class="pill" id="resultCount">0 shown</span></div>
+        <div class="bd" style="padding:0">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px"></th>
+                <th>Task</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Due</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd"><h2>Charts</h2><span class="pill">Status + Priority</span></div>
+        <div class="bd grid2">
+          <div>
+            <div class="mini">By status</div>
+            <canvas id="chartStatus" width="520" height="220"></canvas>
+          </div>
+          <div>
+            <div class="mini">By priority</div>
+            <canvas id="chartPriority" width="520" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row bottom">
+      <div class="card">
+        <div class="hd"><h2>Weekly calendar</h2><span class="pill">Due dates</span></div>
+        <div class="bd">
+          <div id="calendar" class="calendar"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd"><h2>Data</h2><span class="pill">Local demo</span></div>
+        <div class="bd">
+          <p class="mini" style="margin-top:0">
+            This demo stores tasks in <code>localStorage</code>. If you want this to pull from a real Notion database,
+            tell me the database link later and I’ll adapt it to use the Notion API.
+          </p>
+          <button id="btnSeed">Load demo data</button>
+          <button id="btnExport">Export JSON</button>
+          <button id="btnImport">Import JSON</button>
+          <input id="fileInput" type="file" accept="application/json" style="display:none" />
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div>Built for Kuchi-Serve LMS. Customize sections, colors, and fields as needed.</div>
+  </footer>
+
+<script>
+  // ----- Utilities
+  const $ = (id) => document.getElementById(id);
+  const today = () => new Date(new Date().toDateString());
+  const fmtDate = (d) => d ? new Date(d).toISOString().slice(0,10) : "";
+  const isOverdue = (task) => task.due && (new Date(task.due) < today()) && task.status !== "done";
+
+  // ----- Data layer (localStorage)
+  const KEY = "kuchiServeDashboardTasks_v1";
+  function loadTasks(){
+    try { return JSON.parse(localStorage.getItem(KEY) || "[]"); }
+    catch { return []; }
+  }
+  function saveTasks(tasks){ localStorage.setItem(KEY, JSON.stringify(tasks)); }
+
+  // Task shape: { id, title, status: todo|doing|done, priority: low|medium|high, due: YYYY-MM-DD }
+  let tasks = loadTasks();
+
+  // ----- Controls state
+  let selectedIds = new Set();
+
+  function getFiltered(){
+    const q = $("search").value.trim().toLowerCase();
+    const s = $("filterStatus").value;
+    const p = $("filterPriority").value;
+
+    return tasks.filter(t => {
+      if (q && !t.title.toLowerCase().includes(q)) return false;
+      if (s !== "all" && t.status !== s) return false;
+      if (p !== "all" && t.priority !== p) return false;
+      return true;
+    });
+  }
+
+  function recalcKPIs(){
+    const t = tasks;
+    const done = t.filter(x => x.status === "done").length;
+    const overdue = t.filter(isOverdue).length;
+    const now = today();
+    const in7 = new Date(now); in7.setDate(in7.getDate()+7);
+    const thisWeek = t.filter(x => x.due && new Date(x.due) >= now && new Date(x.due) <= in7 && x.status !== "done").length;
+
+    $("kpiTotal").textContent = t.length;
+    $("kpiDone").textContent = done;
+    $("kpiOverdue").textContent = overdue;
+    $("kpiThisWeek").textContent = thisWeek;
+  }
+
+  function statusTag(status){
+    const map = {
+      todo: { label: "To do", dot: "warn" },
+      doing:{ label: "Doing", dot: "good" },
+      done: { label: "Done", dot: "good" },
+    };
+    const m = map[status] || { label: status, dot: "warn" };
+    return `<span class="tag"><span class="dot ${m.dot}"></span>${m.label}</span>`;
+  }
+
+  function renderTable(){
+    const rows = getFiltered();
+    $("resultCount").textContent = `${rows.length} shown`;
+
+    const tbody = $("tbody");
+    tbody.innerHTML = rows.map(t => {
+      const checked = selectedIds.has(t.id) ? "checked" : "";
+      const due = t.due ? t.due : "";
+      const dueBadge = isOverdue(t) ? ` <span class="tag"><span class="dot bad"></span>Overdue</span>` : "";
+      return `
+        <tr>
+          <td><input type="checkbox" data-id="${t.id}" ${checked} /></td>
+          <td>${t.title}</td>
+          <td>${statusTag(t.status)}</td>
+          <td>${t.priority}</td>
+          <td>${due}${dueBadge}</td>
+        </tr>
+      `;
+    }).join("");
+
+    // checkbox handlers
+    tbody.querySelectorAll("input[type=checkbox]").forEach(cb => {
+      cb.addEventListener("change", (e) => {
+        const id = e.target.getAttribute("data-id");
+        if (e.target.checked) selectedIds.add(id);
+        else selectedIds.delete(id);
+      });
+    });
+  }
+
+  // ----- Simple canvas charts (no libraries)
+  function drawBarChart(canvas, labels, values){
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad = 28;
+    const max = Math.max(1, ...values);
+    const barW = (W - pad*2) / labels.length;
+
+    // axis
+    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.beginPath();
+    ctx.moveTo(pad, H-pad);
+    ctx.lineTo(W-pad, H-pad);
+    ctx.stroke();
+
+    labels.forEach((lab, i) => {
+      const v = values[i];
+      const h = (H - pad*2) * (v / max);
+      const x = pad + i*barW + 10;
+      const y = (H - pad) - h;
+      ctx.fillStyle = "rgba(110,168,254,.55)";
+      ctx.fillRect(x, y, barW-20, h);
+
+      ctx.fillStyle = "rgba(234,240,255,.85)";
+      ctx.font = "12px ui-sans-serif";
+      ctx.fillText(String(v), x, y - 6);
+
+      ctx.fillStyle = "rgba(159,176,208,.9)";
+      ctx.fillText(lab, x, H - 10);
+    });
+  }
+
+  function redrawCharts(){
+    const byStatus = { todo:0, doing:0, done:0 };
+    const byPrio = { low:0, medium:0, high:0 };
+    tasks.forEach(t => { byStatus[t.status] = (byStatus[t.status]||0)+1; byPrio[t.priority] = (byPrio[t.priority]||0)+1; });
+
+    drawBarChart($("chartStatus"), ["todo","doing","done"], [byStatus.todo, byStatus.doing, byStatus.done]);
+    drawBarChart($("chartPriority"), ["low","med","high"], [byPrio.low, byPrio.medium, byPrio.high]);
+  }
+
+  // ----- Calendar (current week)
+  function renderCalendar(){
+    const root = $("calendar");
+    root.innerHTML = "";
+
+    const base = today();
+    const dow = base.getDay(); // 0=Sun
+    const mondayOffset = (dow === 0 ? -6 : 1 - dow);
+    const monday = new Date(base); monday.setDate(base.getDate() + mondayOffset);
+
+    for(let i=0;i<7;i++){
+      const d = new Date(monday); d.setDate(monday.getDate()+i);
+      const iso = fmtDate(d);
+      const box = document.createElement("div");
+      box.className = "day";
+      const dueTasks = tasks.filter(t => t.due === iso && t.status !== "done");
+      box.innerHTML = `<div class="d">${d.toLocaleDateString(undefined, { weekday:"short", month:"short", day:"numeric" })}</div>` +
+        (dueTasks.length ? dueTasks.map(t => `<span class="chip">${t.title}</span>`).join("") : `<span class="mini">No due tasks</span>`);
+      root.appendChild(box);
+    }
+  }
+
+  // ----- Actions
+  function addTask(){
+    const title = prompt("Task title?");
+    if(!title) return;
+    const due = prompt("Due date? (YYYY-MM-DD) — optional") || "";
+    const priority = (prompt("Priority? low / medium / high", "medium") || "medium").toLowerCase();
+    const status = (prompt("Status? todo / doing / done", "todo") || "todo").toLowerCase();
+
+    const t = {
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      status: ["todo","doing","done"].includes(status) ? status : "todo",
+      priority: ["low","medium","high"].includes(priority) ? priority : "medium",
+      due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : ""
+    };
+    tasks.unshift(t);
+    saveTasks(tasks);
+    refresh();
+  }
+
+  function markSelectedDone(){
+    if(selectedIds.size === 0){ alert("Select at least one task."); return; }
+    tasks = tasks.map(t => selectedIds.has(t.id) ? { ...t, status: "done" } : t);
+    saveTasks(tasks);
+    selectedIds.clear();
+    refresh();
+  }
+
+  function deleteSelected(){
+    if(selectedIds.size === 0){ alert("Select at least one task."); return; }
+    if(!confirm("Delete selected tasks?")) return;
+    tasks = tasks.filter(t => !selectedIds.has(t.id));
+    saveTasks(tasks);
+    selectedIds.clear();
+    refresh();
+  }
+
+  function seedDemo(){
+    const now = today();
+    const d1 = new Date(now); d1.setDate(now.getDate()+1);
+    const d2 = new Date(now); d2.setDate(now.getDate()+3);
+    const d3 = new Date(now); d3.setDate(now.getDate()-2);
+
+    tasks = [
+      { id: crypto.randomUUID(), title: "Prepare lesson outline", status:"doing", priority:"high", due: fmtDate(d1) },
+      { id: crypto.randomUUID(), title: "Update LMS homepage content", status:"todo", priority:"medium", due: fmtDate(d2) },
+      { id: crypto.randomUUID(), title: "Review student feedback", status:"todo", priority:"low", due: "" },
+      { id: crypto.randomUUID(), title: "Fix enrollment email template", status:"todo", priority:"high", due: fmtDate(d3) },
+      { id: crypto.randomUUID(), title: "Publish week 1 resources", status:"done", priority:"medium", due: fmtDate(now) },
+    ];
+    saveTasks(tasks);
+    selectedIds.clear();
+    refresh();
+  }
+
+  function exportJson(){
+    const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "kuchi-serve-tasks.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importJson(){
+    $("fileInput").click();
+  }
+
+  // ----- Refresh all
+  function refresh(){
+    $("clock").textContent = new Date().toLocaleString();
+    recalcKPIs();
+    renderTable();
+    redrawCharts();
+    renderCalendar();
+  }
+
+  // ----- Wire up
+  ["search","filterStatus","filterPriority"].forEach(id => $(id).addEventListener("input", () => { renderTable(); }));
+  $("btnAdd").addEventListener("click", addTask);
+  $("btnMarkDone").addEventListener("click", markSelectedDone);
+  $("btnDelete").addEventListener("click", deleteSelected);
+  $("btnSeed").addEventListener("click", seedDemo);
+  $("btnExport").addEventListener("click", exportJson);
+  $("btnImport").addEventListener("click", importJson);
+  $("fileInput").addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const text = await file.text();
+    try{
+      const data = JSON.parse(text);
+      if(!Array.isArray(data)) throw new Error("JSON must be an array");
+      tasks = data;
+      saveTasks(tasks);
+      selectedIds.clear();
+      refresh();
+    }catch(err){
+      alert("Import failed: " + err.message);
+    }
+  });
+
+  setInterval(() => $("clock").textContent = new Date().toLocaleString(), 1000);
+  refresh();
+</script>
+</body>
+</html>
